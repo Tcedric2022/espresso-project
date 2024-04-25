@@ -1,0 +1,110 @@
+NAME: shop-review1
+LAST DEPLOYED: Tue Apr 23 20:52:38 2024
+NAMESPACE: espresso-s4cedric
+STATUS: pending-install
+REVISION: 1
+TEST SUITE: None
+HOOKS:
+MANIFEST:
+---
+# Source: web/templates/pdb.yaml
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: espresso-shop-review1
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: espresso-shop-reviews
+---
+# Source: web/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: espresso-shop-review1
+  labels:
+    app: espresso-shop-reviews
+---
+# Source: web/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: espresso-shop-reviews-svc
+  labels:
+    app: espresso-shop-reviews
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8092
+      targetPort: 80
+      protocol: TCP
+      name: http
+  selector:
+    app: espresso-shop-reviews
+---
+# Source: web/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: espresso-shop-review1
+  labels:
+    app: espresso-shop-reviews 
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: espresso-shop-reviews
+  template:
+    metadata:
+      labels:
+        app: espresso-shop-reviews
+        version: v1
+    spec:
+      serviceAccountName: espresso-shop-review1
+      securityContext:
+        {}
+      containers:
+        - name: web
+          securityContext:
+            {}
+          image: hossambarakat/espresso-shop-reviews
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: SERVICE_VERSION
+              value: v1
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+         #livenessProbe:
+         #  httpGet:
+         #    path: /
+         #    port: http
+         #readinessProbe:
+         #  httpGet:
+         #    path: /
+         #    port: http
+          resources:
+            {}
+---
+# Source: web/templates/hpa.yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: espresso-shop-review1
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: espresso-shop-review1
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 50
+

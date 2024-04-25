@@ -1,0 +1,112 @@
+NAME: shop-web
+LAST DEPLOYED: Tue Apr 23 19:42:02 2024
+NAMESPACE: default
+STATUS: pending-install
+REVISION: 1
+TEST SUITE: None
+HOOKS:
+MANIFEST:
+---
+# Source: web/templates/pdb.yaml
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: espresso-shop-web
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: espresso-shop-web
+---
+# Source: web/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: espresso-shop-web
+  labels:
+    app: espresso-shop-web
+---
+# Source: web/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: espresso-shop-web-svc
+  labels:
+    app: espresso-shop-web
+spec:
+  type: NodePort
+  ports:
+    - port: 8090
+      targetPort: 80
+      protocol: TCP
+      name: http
+  selector:
+    app: espresso-shop-web
+---
+# Source: web/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: espresso-shop-web
+  labels:
+    app: espresso-shop-web 
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: espresso-shop-web
+  template:
+    metadata:
+      labels:
+        app: espresso-shop-web
+        version: v1
+    spec:
+      serviceAccountName: espresso-shop-web
+      securityContext:
+        {}
+      containers:
+        - name: web
+          securityContext:
+            {}
+          image: hossambarakat/espresso-shop-web
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: ProductCatalogUrl
+              value: http://espresso-shop-product-catalog-svc:8091
+            - name: ReviewsUrl
+              value: http://espresso-shop-reviews-svc:8092
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+         #livenessProbe:
+         #  httpGet:
+         #    path: /
+         #    port: http
+         #readinessProbe:
+         #  httpGet:
+         #    path: /
+         #    port: http
+          resources:
+            {}
+---
+# Source: web/templates/hpa.yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: espresso-shop-web
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: espresso-shop-web
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 50
+

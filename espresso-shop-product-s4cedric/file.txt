@@ -1,0 +1,107 @@
+NAME: shop-product
+LAST DEPLOYED: Tue Apr 23 19:47:23 2024
+NAMESPACE: espresso-s4cedric
+STATUS: pending-install
+REVISION: 1
+TEST SUITE: None
+HOOKS:
+MANIFEST:
+---
+# Source: web/templates/pdb.yaml
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: espresso-shop-product
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: espresso-shop-product
+---
+# Source: web/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: espresso-shop-product
+  labels:
+    app: espresso-shop-product
+---
+# Source: web/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: espresso-shop-product-catalog-svc
+  labels:
+    app: espresso-shop-product
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8091
+      targetPort: 80
+      protocol: TCP
+      name: http
+  selector:
+    app: espresso-shop-product
+---
+# Source: web/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: espresso-shop-product
+  labels:
+    app: espresso-shop-product 
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: espresso-shop-product
+  template:
+    metadata:
+      labels:
+        app: espresso-shop-product
+        version: v1
+    spec:
+      serviceAccountName: espresso-shop-product
+      securityContext:
+        {}
+      containers:
+        - name: web
+          securityContext:
+            {}
+          image: hossambarakat/espresso-shop-product-catalog
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+         #livenessProbe:
+         #  httpGet:
+         #    path: /
+         #    port: http
+         #readinessProbe:
+         #  httpGet:
+         #    path: /
+         #    port: http
+          resources:
+            {}
+---
+# Source: web/templates/hpa.yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: espresso-shop-product
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: espresso-shop-product
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 50
+ 
